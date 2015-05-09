@@ -206,6 +206,9 @@ void job_stop(Job *job)
   }
 
   job->stopped_time = os_hrtime();
+  if (!job->stopped_time) {
+    job->stopped_time = UINT64_MAX;
+  }
   if (job->opts.pty) {
     // close all streams for pty jobs to send SIGHUP to the process
     job_close_streams(job);
@@ -393,7 +396,7 @@ static void job_stop_timer_cb(uv_timer_t *handle)
       ILOG("Sending SIGTERM to job(id: %d)", job->id);
       uv_kill(job->pid, SIGTERM);
       job->term_sent = true;
-    } else if (elapsed >= KILL_TIMEOUT) {
+    } else if (elapsed >= KILL_TIMEOUT || job->stopped_time == UINT64_MAX) {
       ILOG("Sending SIGKILL to job(id: %d)", job->id);
       uv_kill(job->pid, SIGKILL);
       process_close(job);
